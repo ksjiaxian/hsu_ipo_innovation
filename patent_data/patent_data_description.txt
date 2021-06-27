@@ -1,0 +1,2 @@
+this is the patent data folder. the scripts will use this data for their operations.
+after downloading the data sets from the internets, don't mess with this directory. 

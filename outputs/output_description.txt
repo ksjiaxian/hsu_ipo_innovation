@@ -1,0 +1,1 @@
+this is the outputs folder. the scripts are directed to spit out their results into this folder. 
