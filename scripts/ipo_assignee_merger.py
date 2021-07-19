@@ -51,27 +51,31 @@ def remove_common_substrings(str):
 start_time = time.ctime()
 
 # load in the files
-assignee_file = open('../patent_data/assignee_firms.tsv', encoding='utf-8-sig')
+assignee_file = open('../patent_data/assignee.tsv', encoding='utf-8-sig')
 assignee = csv.DictReader(assignee_file, delimiter="\t")
 
 ipo_file = open('../firms/ipo_10000.csv', encoding='utf-8-sig')
 ipo = csv.DictReader(ipo_file, delimiter=",")
 
-# create an output file 
-output = open('../outputs/name_matches.csv', 'w', newline="\n", encoding='utf-8-sig')
+# create an output file
+output = open('../outputs/name_matches.csv', 'w',
+              newline="\n", encoding='utf-8-sig')
 name_matches = csv.writer(output, delimiter=',')
 header = ['ipo_firm', 'assignee_firm', 'ticker', 'is_common', 'patent_cnt']
 name_matches.writerow(header)
 
 # create a files of non-matches
-output = open('../outputs/assignee_firms_unmatched.tsv', 'w', newline="\n", encoding='utf-8-sig')
+output = open('../outputs/assignee_firms_unmatched.tsv',
+              'w', newline="\n", encoding='utf-8-sig')
 non_assignee_matches = csv.writer(output, delimiter='\t')
 header = ['id', 'type', 'firm']
 non_assignee_matches.writerow(header)
 
-output = open('../outputs/ipo_firms_unmatched.csv', 'w', newline="\n", encoding='utf-8-sig')
+output = open('../outputs/ipo_firms_unmatched.csv',
+              'w', newline="\n", encoding='utf-8-sig')
 non_ipo_matches = csv.writer(output, delimiter=',')
-header = ['firm','ipo_date','ticker','CUSIP','CRSP perm','post-issue shares','dual dum','Founding','Rollup dum']
+header = ['firm', 'ipo_date', 'ticker', 'CUSIP', 'CRSP perm',
+          'post-issue shares', 'dual dum', 'Founding', 'Rollup dum']
 # ['ipo_date', 'firm', 'ticker', 'offer_price', 'opening_price', 'first_day_close'] # old header
 non_ipo_matches.writerow(header)
 
@@ -122,74 +126,77 @@ curr_letter = '0'  # to allow for firms that start with numbers
 
 for row in assignee:
     # calculate progress
-    percent_complete = math.floor((cnt / assignee_size) * 100)
-    if percent_complete > previous_percent:
-        print(str(percent_complete) + '% complete')
-        previous_percent = percent_complete
+    if len(row['firm']) != 0:
+        percent_complete = math.floor((cnt / assignee_size) * 100)
+        if percent_complete > previous_percent:
+            print(str(percent_complete) + '% complete')
+            previous_percent = percent_complete
 
-    # .strip() removes the white space around the string (some name have spaces after)
-    id = row['id'].strip()
-    type = row['type'].strip()
-    firm = row['firm'].strip()
-    found_match = False
+        # .strip() removes the white space around the string (some name have spaces after)
+        id = row['id'].strip()
+        type = row['type'].strip()
+        firm = row['firm'].strip()
+        found_match = False
 
-    # set the curr_letter as the first letter of this string
-    if not firm.lower().startswith(curr_letter):
-        curr_letter = firm[0].lower()
-        print(curr_letter)
+        # set the curr_letter as the first letter of this string
+        if not firm.lower().startswith(curr_letter):
+            curr_letter = firm[0].lower()
+            # print(curr_letter)
 
-    for i in ipo:
-        ipo_firm = i['firm'].strip()
+        for i in ipo:
+            ipo_firm = i['firm'].strip()
 
-        if not ipo_firm.lower().startswith(curr_letter):
-            if ipo_firm[0] < curr_letter:  # continue through if we're before the current assignee letter
-                continue
-            else:
-                break  # if we're after the current assignee letter, break out of loop
+            if not ipo_firm.lower().startswith(curr_letter):
+                # continue through if we're before the current assignee letter
+                if ipo_firm[0] < curr_letter:
+                    continue
+                else:
+                    break  # if we're after the current assignee letter, break out of loop
 
-        # remove the common substrings
-        modified_firm = remove_common_substrings(firm)
-        modified_ipo_firm = remove_common_substrings(ipo_firm)
+            # remove the common substrings
+            modified_firm = remove_common_substrings(firm)
+            modified_ipo_firm = remove_common_substrings(ipo_firm)
 
-        # 1. check that the ipo string prefixes the assignee string
-        # 2. check that the ipo string first word is in the words of the assignee string
-        # 3. check that the ipo and assignee have string similarity by substring or by similarity of word sets
-        if modified_firm.startswith(modified_ipo_firm) and \
-                re.sub("[^\w]", " ", modified_ipo_firm).split()[0] in re.sub("[^\w]", " ", modified_firm).split() and \
-                (fuzz.partial_ratio(modified_firm, modified_ipo_firm) >= 90 or
-                 fuzz.token_sort_ratio(modified_firm, modified_ipo_firm) >= 90):
-            print('ipo: ' + ipo_firm)
-            print('assignee: ' + firm + '\n')
-            # print(modified_ipo_firm)
-            # print(modified_firm)
-            # print(fuzz.partial_ratio(modified_firm, modified_ipo_firm))
-            # print(fuzz.token_sort_ratio(modified_firm, modified_ipo_firm))
+            # 1. check that the ipo string prefixes the assignee string
+            # 2. check that the ipo string first word is in the words of the assignee string
+            # 3. check that the ipo and assignee have string similarity by substring or by similarity of word sets
+            if modified_firm.startswith(modified_ipo_firm) and \
+                    re.sub("[^\w]", " ", modified_ipo_firm).split()[0] in re.sub("[^\w]", " ", modified_firm).split() and \
+                    (fuzz.partial_ratio(modified_firm, modified_ipo_firm) >= 90 or
+                     fuzz.token_sort_ratio(modified_firm, modified_ipo_firm) >= 90):
+                print('ipo: ' + ipo_firm)
+                print('assignee: ' + firm + '\n')
+                # print(modified_ipo_firm)
+                # print(modified_firm)
+                # print(fuzz.partial_ratio(modified_firm, modified_ipo_firm))
+                # print(fuzz.token_sort_ratio(modified_firm, modified_ipo_firm))
 
-            is_common = 1
-            # check if the IPO name is common
-            if word_frequency(modified_ipo_firm, 'en') < 0.000001:
-                is_common = 0
+                is_common = 1
+                # check if the IPO name is common
+                if word_frequency(modified_ipo_firm, 'en') < 0.000001:
+                    is_common = 0
 
-            # write it to the matches output, and record a found match
-            if id not in patent_cnt:
-                patent_cnt[id] = 0
+                # write it to the matches output, and record a found match
+                if id not in patent_cnt:
+                    patent_cnt[id] = 0
 
-            name_matches.writerow([ipo_firm, firm, i['ticker'].strip(), is_common, patent_cnt[id]])
+                name_matches.writerow(
+                    [ipo_firm, firm, i['ticker'].strip(), is_common, patent_cnt[id]])
 
-            found_match = True
+                found_match = True
 
-            # remove from list of unmatched ipo
-            if ipo_firm in unmatched_ipo:
-                unmatched_ipo.remove(ipo_firm)
+                # remove from list of unmatched ipo
+                if ipo_firm in unmatched_ipo:
+                    unmatched_ipo.remove(ipo_firm)
 
-    # if a match isn't found, return it to the "non-matched" pile
-    if not found_match:
-        non_assignee_matches.writerow([id, type, firm])
-    # this rewinds the csv reader
-    ipo_file.seek(0)
-    ipo.__next__()
+        # if a match isn't found, return it to the "non-matched" pile
+        if not found_match:
+            non_assignee_matches.writerow([id, type, firm])
+        # this rewinds the csv reader
+        ipo_file.seek(0)
+        ipo.__next__()
 
-    cnt += 1
+        cnt += 1
 
 for i in ipo:
     ipo_firm = i['firm'].strip()
